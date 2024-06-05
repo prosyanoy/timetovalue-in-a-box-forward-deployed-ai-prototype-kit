@@ -1,0 +1,10 @@
+[project]
+name = "ttv"
+version = "0.1.0"
+description = "TimeToValue-in-a-Box: forward-deployed AI prototype kit"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

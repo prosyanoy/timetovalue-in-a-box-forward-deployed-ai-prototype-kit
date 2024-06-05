@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: generator
+  labels: {{- include "ttv.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: generator } }
+  template:
+    metadata: { labels: { app: generator } }
+    spec:
+      containers:
+        - name: generator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "ttv.generator"]
+          env:
+            {{- include "ttv.commonEnv" . | nindent 12 }}
+            - name: EVENT_RATE
+              value: {{ .Values.generator.eventRate | quote }}
+            - name: ANOMALY_RATE
+              value: {{ .Values.generator.anomalyRate | quote }}
+          resources: { requests: { cpu: 25m, memory: 96Mi } }

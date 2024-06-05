@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http: { endpoint: 0.0.0.0:4318 }
+          grpc: { endpoint: 0.0.0.0:4317 }
+    processors:
+      batch: {}
+    exporters:
+      debug: { verbosity: basic }
+      prometheus: { endpoint: 0.0.0.0:8889 }
+    extensions:
+      health_check: { endpoint: 0.0.0.0:13133 }
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:  { receivers: [otlp], processors: [batch], exporters: [debug] }
+        metrics: { receivers: [otlp], processors: [batch], exporters: [debug, prometheus] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  labels: {{- include "ttv.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: otel-collector } }
+  template:
+    metadata: { labels: { app: otel-collector } }
+    spec:
+      containers:
+        - name: collector
+          image: {{ .Values.collector.image }}
+          args: ["--config=/etc/otel/config.yaml"]
+          ports: [{ containerPort: 4318 }, { containerPort: 4317 }, { containerPort: 8889 }]
+          readinessProbe: { httpGet: { path: /, port: 13133 }, periodSeconds: 3 }
+          volumeMounts: [{ name: config, mountPath: /etc/otel }]
+          resources: { requests: { cpu: 25m, memory: 64Mi } }
+      volumes:
+        - name: config
+          configMap: { name: otel-collector }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+spec:
+  selector: { app: otel-collector }
+  ports:
+    - { name: otlp-http, port: 4318 }
+    - { name: otlp-grpc, port: 4317 }
+    - { name: prom, port: 8889 }

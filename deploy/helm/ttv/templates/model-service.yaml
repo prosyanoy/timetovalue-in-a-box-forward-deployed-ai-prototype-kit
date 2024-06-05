@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-service
+  labels: {{- include "ttv.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: model-service } }
+  template:
+    metadata: { labels: { app: model-service } }
+    spec:
+      containers:
+        - name: model
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "ttv.service"]
+          env:
+            {{- include "ttv.commonEnv" . | nindent 12 }}
+            - name: TTV_START_EPOCH
+              value: {{ .Values.startEpoch | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4318"
+            - name: LLM_BASE_URL
+              value: {{ .Values.llm.baseUrl | quote }}
+            - name: LLM_MODEL
+              value: {{ .Values.llm.model | quote }}
+          ports: [{ containerPort: 8081 }]
+          readinessProbe: { httpGet: { path: /readyz, port: 8081 }, periodSeconds: 2, failureThreshold: 60 }
+          livenessProbe: { httpGet: { path: /healthz, port: 8081 }, periodSeconds: 10, initialDelaySeconds: 20 }
+          resources: { requests: { cpu: 100m, memory: 256Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-service
+spec:
+  type: NodePort
+  selector: { app: model-service }
+  ports: [{ port: 8081, targetPort: 8081, nodePort: {{ .Values.service.modelNodePort }} }]

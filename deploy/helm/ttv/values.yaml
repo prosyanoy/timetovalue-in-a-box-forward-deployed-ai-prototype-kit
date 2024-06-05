@@ -1,0 +1,20 @@
+scenario: network-anomaly        # network-anomaly | predictive-maintenance
+startEpoch: ""                   # stopwatch start (unix seconds); set by `make up`
+image:
+  repository: ttv
+  tag: local
+  pullPolicy: IfNotPresent
+generator:
+  eventRate: "5"                 # events/second
+  anomalyRate: "0.1"
+  seed: "7"
+llm:
+  baseUrl: ""                    # optional OpenAI-compatible endpoint; empty = deterministic summaries
+  model: llama3.2
+nats:
+  image: nats:2.10-alpine
+collector:
+  image: otel/opentelemetry-collector-contrib:0.111.0
+service:
+  dashboardNodePort: 30080
+  modelNodePort: 30081
